@@ -1,0 +1,20 @@
+# Environment and secrets
+.env
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Generated output and working files
+clips/
+.clipper-work/
+
+# Face models download automatically on first run
+models/
+
+# Local backups and tool notes
+*.bak
+main.py.before-audit-fixes
+CLAUDE.md

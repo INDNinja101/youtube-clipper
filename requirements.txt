@@ -1,0 +1,11 @@
+requests>=2.31
+PyYAML>=6.0
+yt-dlp>=2024.1.1
+
+# Local face framing (framing: faces). The two small face models download
+# into models/ automatically on first use.
+opencv-python>=4.10
+
+# Optional. Only needed when a video has no YouTube caption track.
+# Uncomment and reinstall if you hit that case.
+# faster-whisper>=1.0

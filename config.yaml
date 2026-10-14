@@ -1,0 +1,167 @@
+# Settings follow RULEBOOK.md. Section numbers (§) point to the rule behind each one.
+
+# Where finished clips land. Each run gets its own subfolder
+# (<date>_<video id>) with the clips, a .txt post kit per clip, and clips.json.
+# history.json in this folder remembers every clip ever rendered.
+output_dir: clips
+
+# Scratch space for the downloaded video, captions and temp files.
+# - After a successful run it is deleted automatically (the source video is
+#   often 1-2 GB).
+# - After a failed run, or when no clip passes the gate, the download is kept
+#   so the retry skips it.
+# - Downloads of other videos left over from earlier failed runs are deleted
+#   at the start of the next run.
+# Set keep_work_files: true (or pass --keep-work) to keep it even after success.
+work_dir: .clipper-work
+keep_work_files: false
+
+# --- source ---------------------------------------------------------------
+# 1080 is plenty for vertical output. Lower this to 720 for faster downloads.
+max_source_height: 1080
+
+# --- clip selection (§5, §10) -----------------------------------------------
+# Top Shorts: median 37s, 86 of 90 were 60s or less.
+# Clips are always whole sentences. One that is too short gets the next
+# sentences added; one that would need cutting to fit may run up to 15s past
+# the maximum, and beyond that it is dropped rather than chopped.
+min_clip_seconds: 15
+max_clip_seconds: 60
+
+# How many candidates to ask Gemini for. It will usually return fewer good ones.
+target_clip_count: 12
+
+# A clip must pass BOTH gates:
+#  - score_threshold: the model's 0-100 attention score
+#  - min_gate_points: the rulebook scoring gate (§10), out of 10:
+#      understandable muted in 3s (2), emotion peak (2), second famous person (1),
+#      stakes (1), ends on the payoff (1), broad appeal (1), fits channel focus (1),
+#      source under 48h old (1)
+score_threshold: 75
+min_gate_points: 7
+
+# Hard cap on how many clips get rendered, even if more pass the gate.
+max_clips_to_render: 10
+
+# One personality per channel (§2). Name the person (or duo/show) the channel is
+# about, e.g. "Ashneer Grover" or "Samay Raina". Clips without them score lower.
+# Leave empty for no focus. Can be overridden per run with --focus.
+channel_focus: ""
+
+# Language for titles, descriptions, hashtags and the pinned comment.
+# For an Indian audience "Hinglish (Hindi written in Latin script)" often works best.
+title_language: English
+
+# --- framing and edit (§6) --------------------------------------------------
+# speaker = Gemini looks at frames and crops to whoever is talking, with a
+#           stacked split-screen for back-and-forth (recommended)
+# crop    = fixed centre crop, no vision call
+# blur    = old letterboxed look (full frame on a blurred fill). Top channels
+#           don't use this; it's here only for sources where nothing else works.
+layout: speaker
+
+# How "speaker" layout finds people:
+# faces  = local face detection on your PC (YuNet + SFace via OpenCV). Precise
+#          face positions, recognises each person across camera cuts, reads
+#          mouth movement to see who talks. No Gemini calls, no quota used.
+# gemini = Gemini looks at sampled frames (uses 1 API call per clip).
+framing: faces
+# If face framing can't run or finds no faces, try Gemini before a centre crop.
+framing_fallback_to_gemini: true
+# Frames per second analysed for faces. 10 is enough to read mouth movement.
+face_sample_fps: 10
+
+# Only used by framing: gemini. Frames sent per clip: one every N seconds,
+# capped at vision_max_frames.
+vision_frame_interval: 1.5
+vision_max_frames: 30
+
+# Brief zoom on punchlines and big reactions (§6 V4).
+punch_ins: true
+punch_zoom: 1.15
+
+# Cut dead air (§5 S2): a pause longer than this is shortened to this.
+# Only true silence is cut: the gap must have no words AND quiet audio, so
+# laughter, applause, music and singing are never removed.
+# Gemini can mark a clip keep_pauses when the silence IS the joke.
+cut_pauses: true
+max_pause_seconds: 0.5
+
+# Light contrast/saturation/sharpening pass (§6 style layer).
+color_grade: true
+
+# auto  = NVIDIA GPU encoder (NVENC) when it works on this PC, else CPU x264.
+#         NVENC needs an NVIDIA driver new enough for your ffmpeg build; the run
+#         log says which encoder was used and why.
+# nvenc / x264 = force one (nvenc still falls back to x264 if it fails).
+video_encoder: auto
+
+# --- captions (§6 C1-C8) ----------------------------------------------------
+burn_captions: true
+
+# Bold condensed uppercase (§6 C3). Impact ships with Windows.
+# For Hindi (Devanagari) captions use "Nirmala UI"; Impact has no Devanagari.
+caption_font: Impact
+caption_font_size: 100
+caption_words_per_line: 3
+# Lines never exceed this many characters, so nothing runs off the screen.
+caption_max_chars: 16
+
+# 0.0 = top, 1.0 = bottom. 0.62 sits under the speaker's face and clear of the
+# bottom UI (§6 C7). Split-screen shots put captions on the seam automatically.
+caption_vertical_pos: 0.62
+
+# Captions are translated into this language (via Gemini, one extra call) when
+# the video is spoken in something else. Set to "" to keep the original language.
+# Keep captions and titles in the same language (§3 F).
+caption_language: English
+
+# One colour per speaker (§6 C5), in the order Gemini identifies them.
+speaker_colors: ["#FFFFFF", "#6FE8FF", "#B8FF6B"]
+# Names, numbers and punchline words (§6 C6).
+keyword_color: "#FFE600"
+
+# Words starred out in captions (§6 C8). Leave empty to use the built-in list.
+# YouTube's own bleeps ([ __ ]) are always shown as ****.
+censor_words: []
+
+# --- overlays ----------------------------------------------------------------
+# Context box at the top for the first seconds, only when the opening line
+# doesn't explain itself (§4 H4).
+hook_text: true
+hook_seconds: 2.5
+hook_font: Arial Black
+
+# Your @handle, burned in semi-transparently (§6 Branding). "" to turn off.
+watermark: ""
+
+# --- posting (§13) ------------------------------------------------------------
+# Every clip gets a suggested post time, spread over these daily slots and
+# continuing after the last slot already handed out. Post one per slot, never
+# a batch at once.
+post_times: ["12:30", "17:30", "21:00"]
+
+# false = never render the same moment of the same video twice (history.json).
+# Uploading duplicates is a spam signal (§11).
+allow_repeats: false
+
+# --- models ---------------------------------------------------------------
+gemini_model: gemini-3.6-flash
+# Tried in order whenever the model before it fails. Each model has its OWN
+# free daily quota, so the Flash-Lite models keep runs going after the Flash
+# quota is used up. A model that reports "daily quota used up" is skipped for
+# the rest of the run; "busy" (503) and per-minute limits are retried.
+# Flash-Lite judges virality a little less sharply than Flash.
+gemini_fallback_models:
+  - gemini-3.5-flash
+  - gemini-3.5-flash-lite
+  - gemini-3.1-flash-lite
+gemini_api_key_env: GEMINI_API_KEY
+
+# Only used when YouTube has no caption track for the video.
+# tiny / base / small / medium — bigger is slower but more accurate.
+whisper_model: base
+whisper_compute_type: int8
+
+# Caption languages to try, in yt-dlp syntax.
+subtitle_langs: "en.*,en"
